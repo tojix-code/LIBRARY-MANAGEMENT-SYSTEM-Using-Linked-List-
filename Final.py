@@ -41,19 +41,16 @@ class Library:
         conn.close()
 
     def add_book(self, title, author, isbn):
-        # Check if the book with the same ISBN already exists in the database
         conn = self.connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM books WHERE isbn=?", (isbn,))
         result = cursor.fetchone()
         conn.close()
 
-        # If the ISBN already exists, do not add it to the database
         if result[0] > 0:
             messagebox.showerror("Error", f'Book with ISBN "{isbn}" already exists.')
-            return  # ISBN already exists, so we don't add the book again
+            return
 
-        # Create a new book in memory (linked list)
         new_book = Book(title, author, isbn)
         if not self.head:
             self.head = new_book
@@ -63,7 +60,6 @@ class Library:
                 current = current.next
             current.next = new_book
 
-        # Add the book to the database
         conn = self.connect_db()
         cursor = conn.cursor()
         try:
@@ -77,7 +73,6 @@ class Library:
             conn.close()
 
     def delete_book(self, isbn):
-        # Delete from linked list
         current = self.head
         previous = None
         while current:
@@ -87,14 +82,12 @@ class Library:
                 else:
                     self.head = current.next
 
-                # Delete from database
                 conn = self.connect_db()
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM books WHERE isbn=?", (isbn,))
                 conn.commit()
                 conn.close()
 
-                # Record the undo operation
                 self.undo_stack.append(("delete", current))
 
                 messagebox.showinfo("Success", f'Book "{current.title}" deleted successfully.')
@@ -104,7 +97,6 @@ class Library:
         messagebox.showwarning("Not Found", "Book not found!")
 
     def upload_pdf(self, isbn):
-        # Upload PDF path to the book entry in the database
         conn = self.connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM books WHERE isbn=?", (isbn,))
@@ -122,7 +114,6 @@ class Library:
             conn.close()
 
     def view_pdf(self, isbn):
-        # Open the PDF if it exists
         conn = self.connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT pdf_path FROM books WHERE isbn=?", (isbn,))
@@ -134,20 +125,18 @@ class Library:
             messagebox.showwarning("Not Found", "No PDF found for this book.")
 
     def undo(self):
-        # Undo the last operation (either add or delete)
         if not self.undo_stack:
             messagebox.showwarning("Undo", "No operations to undo!")
             return
 
         operation = self.undo_stack.pop()
         if operation[0] == "add":
-            self.delete_book(operation[1].isbn)  # Undo add by deleting the book
+            self.delete_book(operation[1].isbn)
         elif operation[0] == "delete":
             self.add_book(operation[1].title, operation[1].author,
-                          operation[1].isbn)  # Undo delete by re-adding the book
+                          operation[1].isbn)
 
     def view_books(self):
-        # Retrieve all books from the database
         conn = self.connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT title, author, isbn, pdf_path FROM books")
@@ -158,7 +147,6 @@ class Library:
             messagebox.showinfo("Books", "No books found.")
             return
 
-        # Create the HTML content with enhanced CSS for stunning 3D effects
         html_content = """
         <html>
         <head>
@@ -196,7 +184,7 @@ class Library:
 
                 .container {
                     width: 100%;
-                    max-width: 1200px; /* Updated width */
+                    max-width: 1200px;
                     background: white;
                     border-radius: var(--border-radius);
                     box-shadow: var(--box-shadow);
@@ -219,20 +207,20 @@ class Library:
 
                 .header {
                     display: flex;
-                    justify-content: flex-start; /* Align items to the left */
+                    justify-content: flex-start;
                     padding: 1rem;
                 }
 
                 .search-container {
                     flex: 1;
                     text-align: left;
-                    margin-right: 20px; /* Space between search bar and table */
+                    margin-right: 20px;
                 }
 
                 .search-input {
                     padding: 10px;
-                    width: 100%; /* Full width of the container */
-                    max-width: 400px; /* Optional max width */
+                    width: 100%;
+                    max-width: 400px;
                     border: 1px solid #ccc;
                     border-radius: 6px;
                     font-size: 16px;
@@ -302,7 +290,7 @@ class Library:
                     width: 20px;
                     height: 20px;
                     margin-right: 8px;
-                    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+                    filter: drop-shadow(0 2px 4px rgba(0,  0, 0, 0.2));
                 }
 
                 @media screen and (max-width: 768px) {
@@ -321,7 +309,6 @@ class Library:
                     }
                 }
 
-                /* Subtle Animations */
                 @keyframes fadeIn {
                     from { opacity: 0; transform: translateY(20px); }
                     to { opacity: 1; transform: translateY(0); }
@@ -375,11 +362,9 @@ class Library:
                     <tbody>
             """
 
-        # Add each book to the HTML content with a stylish 3D effect
         for row in rows:
             title, author, isbn, pdf_path = row
             if pdf_path:
-                # Use file:// path to create clickable links for PDF files
                 pdf_link = f'<a class="pdf-link" href="file://{os.path.abspath(pdf_path)}" target="_blank"><img src="https://img.icons8.com/ios-filled/50/000000/pdf-2.png" class="pdf-icon"/>View PDF</a>'
             else:
                 pdf_link = "No PDF available"
@@ -393,7 +378,6 @@ class Library:
             </tr>
             """
 
-        # Close the HTML tags
         html_content += """
                     </tbody>
                 </table>
@@ -402,12 +386,10 @@ class Library:
         </html>
         """
 
-        # Save the HTML content to a file
         html_file_path = "books_list.html"
         with open(html_file_path, "w") as file:
             file.write(html_content)
 
-        # Open the HTML file in the default web browser
         webbrowser.open(f"file://{os.path.abspath(html_file_path)}")
 
     def load_books_from_db(self):
@@ -417,7 +399,7 @@ class Library:
         rows = cursor.fetchall()
 
         for row in rows:
-            new_book = Book(row[ 0], row[1], row[2], row[3])
+            new_book = Book(row[0], row[1], row[2], row[3])
             if not self.head:
                 self.head = new_book
             else:
@@ -429,7 +411,6 @@ class Library:
         conn.close()
 
     def update_book(self, isbn, title, author, new_isbn):
-        # Update the book in the database
         conn = self.connect_db()
         cursor = conn.cursor()
         cursor.execute("UPDATE books SET title=?, author=?, isbn=? WHERE isbn=?",
@@ -455,21 +436,20 @@ class LibraryApp:
         self.window = root
         self.window.title("LIBRARY MANAGEMENT SYSTEM")
         self.window.geometry("1920x1080")
-        self.window.config(bg="#f0f0f0")  # Light gray background
+        self.window.config(bg="#f0f0f0")
 
         self.create_widgets()
 
     def create_widgets(self):
-        original_image = Image.open("ks.png")  # Replace with your image path
+        original_image = Image.open("ks.png")
         resized_image = original_image.resize((1495, 200), Image.LANCZOS)
         self.image = ImageTk.PhotoImage(resized_image)
 
-        # Create a label to display the image
-        self.image_label = tk.Label(self.window, image=self.image, bg="#f0f0f0")
+        self .image_label = tk.Label(self.window, image=self.image, bg="#f0f0f0")
         self.image_label.grid(row=0, column=0, columnspan=2, padx=20, pady=20)
 
         self.title_label = tk.Label(self.window, text="LIBRARY MANAGEMENT SYSTEM", font=("Helvetica", 36, "bold"),
-                                    bg="#f0f0f0", fg="#333")  # Dark gray text
+                                    bg="#f0f0f0", fg="#333")
         self.title_label.grid(row=1, column=0, columnspan=2, pady=20)
 
         button_frame = tk.Frame(self.window, bg="#f0f0f0")
@@ -483,7 +463,7 @@ class LibraryApp:
         self.create_button(button_frame, "Update Book", self.update_book, 2, 1)
         undo_button = tk.Button(button_frame, text="Undo Last Operation", command=self.library.undo, width=20,
                                 bg="#007bff", fg="white", font=("Helvetica", 14))
-        undo_button.grid(row=3, column=0, columnspan=2, padx=20, pady=10)  # Row 3, spans both columns
+        undo_button.grid(row=3, column=0, columnspan=2, padx=20, pady=10)
         exit_button = tk.Button(button_frame, text="Exit", command=self.window.quit, width=20, bg="#ff4d4d", fg="white",
                                 font=("Helvetica", 14))
         exit_button.grid(row=4, column=0, columnspan=2, padx=20, pady=20)
@@ -510,20 +490,16 @@ class LibraryApp:
 
         tk.Label(add_book_window, text="ISBN (numbers only):", bg="#f0f0f0").pack(pady=5)
 
-
         def validate_isbn_input(P):
             if P == "" or P.isdigit():
                 return True
             else:
                 return False
 
-
         validate_isbn = add_book_window.register(validate_isbn_input)
-
 
         isbn_entry = tk.Entry(add_book_window, width=30, validate="key", validatecommand=(validate_isbn, '%P'))
         isbn_entry.pack(pady=5)
-
 
         def on_ok():
             title = title_entry.get()
@@ -533,11 +509,9 @@ class LibraryApp:
                 self.library.add_book(title, author, isbn)
                 add_book_window.destroy()
 
-        # Create OK button
         ok_button = tk.Button(add_book_window, text="OK", command=on_ok, bg="#007bff", fg="white")
         ok_button.pack(pady=20)
 
-        # Create Cancel button
         cancel_button = tk.Button(add_book_window, text="Cancel", command=add_book_window.destroy, bg="#ff4d4d", fg="white")
         cancel_button.pack(pady=5)
 
@@ -550,15 +524,15 @@ class LibraryApp:
         isbn = simpledialog.askstring("Input", "Enter book ISBN to upload PDF:")
         if isbn:
             self.library.upload_pdf(isbn)
+
     def view_pdf(self):
         isbn = simpledialog.askstring("Input", "Enter book ISBN to view PDF:")
         if isbn:
             self.library.view_pdf(isbn)
 
     def update_book(self):
-        isbn = simpledialog.askstring("Input", "Enter book ISBN to update:")
+        isbn = simpledialog.askstring ("Input", "Enter book ISBN to update:")
         if isbn:
-            # Check if the book exists
             book = self.library.get_book_by_isbn(isbn)
             if book:
                 self.update_book_dialog(isbn, book)
@@ -566,25 +540,22 @@ class LibraryApp:
                 messagebox.showerror("Error", "Book with this ISBN not found.")
 
     def update_book_dialog(self, isbn, book):
-        # Create a new Toplevel window for updating book details
         update_book_window = tk.Toplevel(self.window)
         update_book_window.title("Update Book")
         update_book_window.geometry("500x300")
         update_book_window.config(bg="#f0f0f0")
 
-        # Create labels and entry fields for title, author, and ISBN
         tk.Label(update_book_window, text="Book Title:", bg="#f0f0f0").pack(pady=5)
         title_entry = tk.Entry(update_book_window, width=30)
-        title_entry.insert(0, book[0])  # Pre-fill with current title
+        title_entry.insert(0, book[0])
         title_entry.pack(pady=5)
 
         tk.Label(update_book_window, text="Author:", bg="#f0f0f0").pack(pady=5)
         author_entry = tk.Entry(update_book_window, width=30)
-        author_entry.insert(0, book[1])  # Pre-fill with current author
+        author_entry.insert(0, book[1])
         author_entry.pack(pady=5)
 
         tk.Label(update_book_window, text="ISBN (numbers only):", bg="#f0f0f0").pack(pady=5)
-
 
         def validate_isbn_input(P):
             if P == "" or P.isdigit():
@@ -594,18 +565,15 @@ class LibraryApp:
 
         validate_isbn = update_book_window.register(validate_isbn_input)
 
-
         isbn_entry = tk.Entry(update_book_window, width=30, validate="key", validatecommand=(validate_isbn, '%P'))
         isbn_entry.insert(0, book[2])
         isbn_entry.pack(pady=5)
-
 
         def on_ok():
             title = title_entry.get()
             author = author_entry.get()
             new_isbn = isbn_entry.get()
             if title and author and new_isbn:
-
                 self.library.update_book(isbn, title, author, new_isbn)
                 update_book_window.destroy()
             else:
