@@ -1,0 +1,2 @@
+pillow~=11.1.0
+graphviz~=0.20.3
